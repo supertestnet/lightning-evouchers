@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<script src="https://bitcoincore.tech/apps/bitcoinjs-ui/lib/bitcoinjs-lib.js"></script>
+	<script src="https://bundle.run/buffer@6.0.3"></script>
+</head>
+<body>
+	<p>Endpoint</p>
+	<p><input type="text" id="endpoint" /></p>
+	<p>Invoice macaroon</p>
+	<p><input type="text" id="macaroon" /></p>
+	<p><button id="make invoice">Submit</button></p>
+	<script>
+		var queryString = window.location.search;
+		var urlParams = new URLSearchParams( queryString );
+		var preimage = urlParams.get( "preimage" );
+		var pmthash = bitcoinjs.crypto.sha256( buffer.Buffer.from( preimage, "hex" ) ).toString( "hex" );
+		var amount = urlParams.get( "amount" );
+	</script>
+	<script>
+		function askLightningEscrowToPayInvoice( invoice ) {
+			var url = "https://app6.lightningescrow.io/payinvoiceandsettlewithpreimage/?invoice=" + invoice;
+			var xhttp = new XMLHttpRequest();
+			xhttp.onreadystatechange = function() {
+			    if ( this.readyState == 4 && this.status == 200 ) {
+			    	var json = JSON.parse( xhttp.responseText );
+			        if ( json[ "status" ] == "success" ) {
+			        	console.log( "yay, they paid the voucher! Time to settle now" );
+			        } else {
+			        	console.log( json );
+			        }
+			    }
+			}
+			xhttp.open( "GET", url, true );
+			xhttp.send();
+		}
+		function settleInvoice( preimage, endpoint, macaroon ) {
+			var url = "http://18.188.46.98:5003/settle-lnd-invoice/?endpoint=" + endpoint + "&macaroon=" + macaroon + "&preimage=" + preimage;
+			var xhttp = new XMLHttpRequest();
+			xhttp.onreadystatechange = function() {
+			    if ( this.readyState == 4 && this.status == 200 ) {
+			    	var json = JSON.parse( xhttp.responseText );
+			        if ( json[ "status" ] == "success" ) {
+			        	console.log( "yay, you got the voucher!" );
+			        } else {
+			        	console.log( json );
+			        }
+			    }
+			}
+			xhttp.open( "GET", url, true );
+			xhttp.send();
+		}
+		function loopChecker( pmthash, endpoint, macaroon, preimage ) {
+			var url = "http://18.188.46.98:5003/check-lnd-invoice/?endpoint=" + endpoint + "&macaroon=" + macaroon + "&pmthash=" + pmthash;
+			var xhttp = new XMLHttpRequest();
+			xhttp.onreadystatechange = function() {
+			    if ( this.readyState == 4 && this.status == 200 ) {
+			    	var json = JSON.parse( xhttp.responseText );
+			        if ( json[ "state" ] == "ACCEPTED" ) {
+			    		console.log( "Time to settle the voucher!" );
+			        	settleInvoice( preimage, endpoint, macaroon );
+			        } else if ( json[ "state" ] != "SETTLED" ) {
+			        	console.log( json );
+			        	setTimeout( function() {loopChecker( pmthash, endpoint, macaroon, preimage );}, 5000 );
+			        } else {
+			    		console.log( "Well, you don't need me anymore" );			        	
+			        }
+			    }
+			}
+			xhttp.open( "GET", url, true );
+			xhttp.send();
+		}
+		document.getElementById( "make invoice" ).addEventListener( "click", function() {
+			var endpoint = document.getElementById( "endpoint" ).value;
+			var macaroon = document.getElementById( "macaroon" ).value;
+			var url = "http://18.188.46.98:5003/get-lnd-hodl-invoice/?endpoint=" + endpoint + "&macaroon=" + macaroon + "&amount=" + amount.toString() + "&memo=" + "anymemo" + "&pmthash=" + pmthash;
+			var xhttp = new XMLHttpRequest();
+			xhttp.onreadystatechange = function() {
+			    if ( this.readyState == 4 && this.status == 200 ) {
+			    	var json = JSON.parse( xhttp.responseText );
+			        console.log( "send this invoice to lightning escrow:", json[ "invoice" ] );
+			        askLightningEscrowToPayInvoice( json[ "invoice" ] );
+			        loopChecker( pmthash, endpoint, macaroon, preimage );
+			    }
+			}
+			xhttp.open( "GET", url, true );
+			xhttp.send();
+			//get lnd hodl invoice:
+//			var url = "http://18.188.46.98:5003/get-lnd-hodl-invoice/?endpoint=http://185.117.75.49:7012&macaroon=0201036c6e640258030a10218e80ed6877232c53110590120b9fc91201301a160a0761646472657373120472656164120577726974651a170a08696e766f69636573120472656164120577726974651a0f0a076f6e636861696e120472656164000006208b515396dcbe8d1c1bff7da919f1c03c60c1f622ed7ce63e8e8a236a45188d25&amount=500&memo=anymemo&pmthash=271a413bd339c5709fdceaec41f14f11e9fbfb5042d72d331c65f32b284cd09a;
+			//check lnd invoice:
+			//http://18.188.46.98:5003/check-lnd-invoice/?endpoint=http://185.117.75.49:7012&macaroon=0201036c6e640258030a10218e80ed6877232c53110590120b9fc91201301a160a0761646472657373120472656164120577726974651a170a08696e766f69636573120472656164120577726974651a0f0a076f6e636861696e120472656164000006208b515396dcbe8d1c1bff7da919f1c03c60c1f622ed7ce63e8e8a236a45188d25&pmthash=271a413bd339c5709fdceaec41f14f11e9fbfb5042d72d331c65f32b284cd09a
+			//ask lightning escrow to pay it: https://app6.lightningescrow.io/payinvoiceandsettlewithpreimage/?invoice=lnbc6700n1p3tgq3epp5aaytsp4d6xjrpnm2d7yp4a5mxenvhml6uate78534qc6rct9e29qdq8w3jhxaqxqyjw5qcqpjsp5altlaz9ctnx7vsrp3t0ag69xhhxg7te8drr3je0qhgfkz4xwackqrzjqwwpe4vgx9ngul7jhz0l92t0ap5ywr3kp6qn7l70ylchqd6wvy2azz5v5qqq23gqqyqqqqlgqqqqqqgq9q9qyyssqtxcgx62zc0hrjx3m9xtrrxzlfhxk73rqxz6yymhn93vt85ywmxw8am9k2gqh68xrv9r3ysu8kvtf7wq76s35p0qsvsxqexyalgfuu3cqqftxjz
+			//settle lnd invoice:
+			//http://18.188.46.98:5003/settle-lnd-invoice/?endpoint=http://185.117.75.49:7012&macaroon=0201036c6e640258030a10218e80ed6877232c53110590120b9fc91201301a160a0761646472657373120472656164120577726974651a170a08696e766f69636573120472656164120577726974651a0f0a076f6e636861696e120472656164000006208b515396dcbe8d1c1bff7da919f1c03c60c1f622ed7ce63e8e8a236a45188d25&preimage=abababababababababababababababababababababababababababababababab
+			console.log( endpoint, macaroon, preimage, pmthash, amount );
+			console.log( url );
+		});
+	</script>
+</body>
+</html>
