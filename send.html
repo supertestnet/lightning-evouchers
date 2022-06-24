@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<style>
+		*, *:before, *:after {
+			box-sizing: border-box;
+			margin: 5px;
+		}
+		html {
+			min-height: 100%;
+			display: flex;
+		}
+		body {
+			flex: 1;
+		}
+	</style>
+	<script src="https://bitcoincore.tech/apps/bitcoinjs-ui/lib/bitcoinjs-lib.js"></script>
+	<script src="https://bundle.run/buffer@6.0.3"></script>
+	<script src="https://supertestnet.github.io/bitcoin-chess/js/qrcode.js"></script>
+</head>
+<body>
+	<div id="evoucher generator">
+		<p>Enter an amount for your evoucher</p>
+		<p><input type="text" id="amount" /> sats</p>
+		<p><button id="get invoice">Submit</button></p>
+	</div>
+	<div id="invoice box" style="width: 100%; max-width: 350px; display: none;" align="center">
+		<h2 id="invoice title">Pay this invoice</h2>
+		<div id="invoice qr" style="width: 100%; max-width: 300px; height: 100%; max-height: 300px; border: 1px solid black; border-radius: 10px; padding: 10px;">
+		</div>
+		<div id="invoice text" style="display: inline-block; border: 1px solid black; text-overflow: break; word-break: break-all;"></div>
+	</div>
+	<div id="voucher box" style="width: 100%; max-width: 350px; display: none;" align="center">
+		<h2 id="voucher title">Your evoucher</h2>
+		<p id="voucher instructions">Scan with a regular qr code reader, not with a bitcoin wallet. Or, share the link below the qr code.</p>
+		<div id="voucher qr" style="width: 100%; max-width: 300px; height: 100%; max-height: 300px; border: 1px solid black; border-radius: 10px; padding: 10px;">
+		</div>
+		<div id="voucher text" style="display: inline-block; border: 1px solid black; text-overflow: break; word-break: break-all;"></div>
+	</div>
+	<script>
+		function createQR( content ) {
+		        var dataUriPngImage = document.createElement( "img" ),
+		        s = QRCode.generatePNG( content, {
+		                ecclevel: "M",
+		                format: "html",
+		                fillcolor: "#FFFFFF",
+		                textcolor: "#373737",
+		                margin: 4,
+		                modulesize: 8,
+		        });
+		        dataUriPngImage.src = s;
+		        dataUriPngImage.id = "qr_code";
+		        dataUriPngImage.style.display = "block";
+		        dataUriPngImage.style.margin = "auto";
+		        dataUriPngImage.style.width = "100%";
+		        dataUriPngImage.style.maxWidth = "300px";
+		        return dataUriPngImage;
+		}
+		function loopChecker( pmthash, preimage, amount ) {
+			var url = "https://app6.lightningescrow.io/getinvoicestatusv2/?pmthash=" + pmthash;
+			var xhttp = new XMLHttpRequest();
+			xhttp.onreadystatechange = function() {
+			    if ( this.readyState == 4 && this.status == 200 ) {
+			        if ( xhttp.responseText == "ACCEPTED" ) {
+			        	console.log( xhttp.responseText );
+			        	var voucher = "https://supertestnet.github.io/lightning-evouchers/receive.html?preimage=" + preimage + "&amount=" + amount;
+				        console.log( "here is the voucher:", voucher );
+						document.getElementById( "voucher qr" ).append( createQR( voucher ) );
+						document.getElementById( "voucher text" ).innerText = voucher;
+						document.getElementById( "invoice box" ).style.display = "none";
+						document.getElementById( "voucher box" ).style.display = "block";
+			        } else if ( xhttp.responseText != "SETTLED" ) {
+			        	console.log( xhttp.responseText );
+			        	console.log( "do not show the url yet" );
+			        	setTimeout( function() {loopChecker( pmthash, preimage, amount );}, 5000 );
+			        } else {
+			    		console.log( "Well, you don't need me anymore" );			        	
+			        }
+			    }
+			}
+			xhttp.open( "GET", url, true );
+			xhttp.send();
+		}
+		document.getElementById( "get invoice" ).addEventListener( "click", function() {
+			var preimage = bitcoinjs.ECPair.makeRandom().__D.toString( "hex" );
+			var pmthash = bitcoinjs.crypto.sha256( buffer.Buffer.from( preimage, "hex" ) ).toString( "hex" );
+			var amount = document.getElementById( "amount" ).value;
+			var url = "https://app6.lightningescrow.io/createholdinvoicev2/?amount=" + amount.toString() + "&hash=" + pmthash;
+			var xhttp = new XMLHttpRequest();
+			xhttp.onreadystatechange = function() {
+			    if ( this.readyState == 4 && this.status == 200 ) {
+					document.getElementById( "invoice qr" ).append( createQR( xhttp.responseText ) );
+					document.getElementById( "invoice text" ).innerText = xhttp.responseText;
+					document.getElementById( "invoice box" ).style.display = "block";
+					document.getElementById( "evoucher generator" ).style.display = "none";
+			        console.log( "pay this invoice:", xhttp.responseText );
+			        loopChecker( pmthash, preimage, amount );
+			    }
+			}
+			xhttp.open( "GET", url, true );
+			xhttp.send();
+		});
+	</script>
+</body>
+</html>
