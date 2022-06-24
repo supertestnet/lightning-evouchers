@@ -2,6 +2,10 @@
 
 Non-custodial evouchers for simpler lightning payments
 
+# How to try them
+
+Go here and follow the instructions: [https://supertestnet.github.io/lightning-evouchers/send.html](https://supertestnet.github.io/lightning-evouchers/send.html)
+
 # How it works
 
 The sender picks an amount for their voucher, creates a preimage, and hashes it. They provide the hash to Lightning Escrow or another lightning service provider (LSP) and ask them for an invoice with that payment hash and for the amount they picked. The LSP provides them with such an invoice, which the sender tries to pay with their wallet. The LSP cannot settle the invoice at this stage because they do not have the preimage (the sender does), but, because the money is locked into an htlc which the LSP has the raw text of, the sender can go offline at this stage if they want.
