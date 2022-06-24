@@ -38,6 +38,7 @@
 		<div id="voucher text" style="display: inline-block; border: 1px solid black; text-overflow: break; word-break: break-all;"></div>
 	</div>
 	<script>
+		var escrow = "https://app7.lightningescrow.io";
 		function createQR( content ) {
 		        var dataUriPngImage = document.createElement( "img" ),
 		        s = QRCode.generatePNG( content, {
@@ -63,7 +64,7 @@
 			    if ( this.readyState == 4 && this.status == 200 ) {
 			        if ( xhttp.responseText == "ACCEPTED" ) {
 			        	console.log( xhttp.responseText );
-			        	var voucher = "https://supertestnet.github.io/lightning-evouchers/receive.html?preimage=" + preimage + "&amount=" + amount;
+			        	var voucher = "https://supertestnet.github.io/lightning-evouchers/receive.html?preimage=" + preimage + "&amount=" + amount + "&escrow=" + escrow;
 				        console.log( "here is the voucher:", voucher );
 						document.getElementById( "voucher qr" ).append( createQR( voucher ) );
 						document.getElementById( "voucher text" ).innerText = voucher;
@@ -74,7 +75,7 @@
 			        	console.log( "do not show the url yet" );
 			        	setTimeout( function() {loopChecker( pmthash, preimage, amount );}, 5000 );
 			        } else {
-			    		console.log( "Well, you don't need me anymore" );			        	
+			    		console.log( "Well, you don't need me anymore" );
 			        }
 			    }
 			}
