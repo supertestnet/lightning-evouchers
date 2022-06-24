@@ -5,7 +5,7 @@
 	<script src="https://bundle.run/buffer@6.0.3"></script>
 </head>
 <body>
-	<div id="error banner" style="background-color: red; color: white; font-weight: bold; padding: 5px; font-family: sans-serif; display: none;">Endpoint must contain http or https prefix, please try again</div>
+	<div id="error banner" style="background-color: red; color: white; font-weight: bold; padding: 5px; font-family: sans-serif; display: none;"></div>
 	<p>Endpoint</p>
 	<p><input type="text" id="endpoint" /></p>
 	<p>Invoice macaroon</p>
@@ -17,6 +17,7 @@
 		var preimage = urlParams.get( "preimage" );
 		var pmthash = bitcoinjs.crypto.sha256( buffer.Buffer.from( preimage, "hex" ) ).toString( "hex" );
 		var amount = urlParams.get( "amount" );
+		var escrow = urlParams.get( "escrow" );
 	</script>
 	<script>
 		function isHex( string ) {
@@ -25,6 +26,7 @@
 		}
 		function askLightningEscrowToPayInvoice( invoice ) {
 			var url = "https://app6.lightningescrow.io/payinvoiceandsettlewithpreimage/?invoice=" + invoice;
+//			var url = escrow + "/payinvoiceandsettlewithpreimage/?invoice=" + invoice;
 			var xhttp = new XMLHttpRequest();
 			xhttp.onreadystatechange = function() {
 			    if ( this.readyState == 4 && this.status == 200 ) {
@@ -32,7 +34,9 @@
 			        if ( json[ "status" ] == "success" ) {
 			        	console.log( "yay, they paid the voucher! Time to settle now" );
 			        } else {
-			        	console.log( json );
+						document.getElementById( "error banner" ).style.display = "block";
+						document.getElementById( "error banner" ).style.backgroundColor = "red";
+						document.getElementById( "error banner" ).innerText = "We could not settle the invoice, please try again";
 			        }
 			    }
 			}
@@ -40,16 +44,21 @@
 			xhttp.send();
 		}
 		function settleInvoice( preimage, endpoint, macaroon ) {
-//			var url = "http://18.188.46.98:5003/settle-lnd-invoice/?endpoint=" + endpoint + "&macaroon=" + macaroon + "&preimage=" + preimage;
 			var url = "https://app7.lightningescrow.io/settle-lnd-invoice/?endpoint=" + endpoint + "&macaroon=" + macaroon + "&preimage=" + preimage;
+//			var url = escrow + "/settle-lnd-invoice/?endpoint=" + endpoint + "&macaroon=" + macaroon + "&preimage=" + preimage;
 			var xhttp = new XMLHttpRequest();
 			xhttp.onreadystatechange = function() {
 			    if ( this.readyState == 4 && this.status == 200 ) {
 			    	var json = JSON.parse( xhttp.responseText );
 			        if ( json[ "status" ] == "success" ) {
 			        	console.log( "yay, you got the voucher!" );
+						document.getElementById( "error banner" ).style.display = "block";
+						document.getElementById( "error banner" ).style.backgroundColor = "green";
+						document.getElementById( "error banner" ).innerText = "Success, you redeemed the voucher";
 			        } else {
-			        	console.log( json );
+						document.getElementById( "error banner" ).style.display = "block";
+						document.getElementById( "error banner" ).style.backgroundColor = "red";
+						document.getElementById( "error banner" ).innerText = "Redeeming your voucher failed, please try again";
 			        }
 			    }
 			}
@@ -57,8 +66,8 @@
 			xhttp.send();
 		}
 		function loopChecker( pmthash, endpoint, macaroon, preimage ) {
-//			var url = "http://18.188.46.98:5003/check-lnd-invoice/?endpoint=" + endpoint + "&macaroon=" + macaroon + "&pmthash=" + pmthash;
 			var url = "https://app7.lightningescrow.io/check-lnd-invoice/?endpoint=" + endpoint + "&macaroon=" + macaroon + "&pmthash=" + pmthash;
+//			var url = escrow + "/check-lnd-invoice/?endpoint=" + endpoint + "&macaroon=" + macaroon + "&pmthash=" + pmthash;
 			var xhttp = new XMLHttpRequest();
 			xhttp.onreadystatechange = function() {
 			    if ( this.readyState == 4 && this.status == 200 ) {
@@ -87,14 +96,16 @@
 			}
 			if ( !endpoint.includes( "http" ) ) {
 				document.getElementById( "error banner" ).style.display = "block";
+				document.getElementById( "error banner" ).style.backgroundColor = "red";
+				document.getElementById( "error banner" ).innerText = "Endpoint must contain http or https prefix, please try again";
 				return;
 			}
 			var macaroon = document.getElementById( "macaroon" ).value;
 			if ( !isHex( macaroon ) ) {
 				macaroon = buffer.Buffer.from( macaroon, "base64" ).toString( "hex" );
 			}
-//			var url = "http://18.188.46.98:5003/get-lnd-hodl-invoice/?endpoint=" + endpoint + "&macaroon=" + macaroon + "&amount=" + amount.toString() + "&memo=" + "anymemo" + "&pmthash=" + pmthash;
-			var url = "https://app7.lightningescrow.io/get-lnd-hodl-invoice/?endpoint=" + endpoint + "&macaroon=" + macaroon + "&amount=" + amount.toString() + "&memo=" + "anymemo" + "&pmthash=" + pmthash;
+			var url = "https://app7.lightningescrow.io/get-lnd-hodl-invoice/?endpoint=" + endpoint + "&macaroon=" + macaroon + "&amount=" + amount.toString() + "&memo=" + "redeeming%20your%20lightning%20evoucher" + "&pmthash=" + pmthash;
+//			var url = escrow + "/get-lnd-hodl-invoice/?endpoint=" + endpoint + "&macaroon=" + macaroon + "&amount=" + amount.toString() + "&memo=" + "redeeming%20your%20lightning%20evoucher" + "&pmthash=" + pmthash;
 			var xhttp = new XMLHttpRequest();
 			xhttp.onreadystatechange = function() {
 			    if ( this.readyState == 4 && this.status == 200 ) {
