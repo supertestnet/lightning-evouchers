@@ -4,7 +4,7 @@ Non-custodial evouchers for simpler lightning payments
 
 # How to try them
 
-Go here and follow the instructions: [https://supertestnet.github.io/lightning-evouchers/send.html](https://supertestnet.github.io/lightning-evouchers/send.html)
+Go here and follow the instructions: [https://supertestnet.github.io/lightning-evouchers/send.html](https://supertestnet.github.io/lightning-evouchers/send.html) \[**NOTE: THE LINK NO LONGER WORKS** because I was relying on an api that stopped working. Sorry :(\]
 
 # How it works
 
